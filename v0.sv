@@ -1,0 +1,91 @@
+module v0 #(
+    parameter int WIDTH = 8
+) (
+    input  logic clk,
+    input  logic reset,
+    input  logic start,
+
+    input  logic signed [WIDTH-1:0] a [0:3],    // WIDTH = 8, so [7:0] a [0:3]; [7:0] defines the bit width, [0:3] defines how many inputs there are
+    input  logic signed [WIDTH-1:0] b [0:3],
+
+    output logic signed [(2*WIDTH)+1:0] result, // result bit width is 2*WIDTH + 1 = 17 bits
+    output logic busy,
+    output logic done
+);
+
+    localparam int ACC_WIDTH = (2 * WIDTH) + 2; // the bit width of the input stored in the register
+
+    logic [1:0] index;  // up to index=3, so two bits is sufficient
+
+    logic signed [ACC_WIDTH-1:0] accumulator;   // -1 because from ACCWIDth to 0 is actually a length of ACCWIDTH+1, so we must subtract to balance out
+
+    logic signed [WIDTH-1:0] selected_a;
+    logic signed [WIDTH-1:0] selected_b;
+
+    logic signed [(2*WIDTH)-1:0] product;   // internal variable, same idea as result
+    logic signed [ACC_WIDTH-1:0] extended_product;  // 
+
+
+    // Select the current pair of vector elements.
+    // They share same index here beacause its line x line
+    always_comb begin
+        selected_a = a[index];
+        selected_b = b[index]; 
+    end
+
+
+    // Combinational arithmetic datapath.
+    always_comb begin
+        product = selected_a * selected_b;
+
+        // Sign-extend the product to the accumulator width.
+        // {} is concatenation, it means "join several bis together"
+        // { N { something } } is a replication operator, it means repeating something N times, so {3{2'b10}} is 101010
+        // this concatenation is for sign extension. 
+        //line 43 determines the length of sign bit extension and whether its 1 or 0, it is then concated to the product
+        extended_product = {
+            {(ACC_WIDTH - 2*WIDTH){product[(2*WIDTH)-1]}}, 
+            product 
+        };
+    end
+
+
+    // Sequential control and storage.
+
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset) begin
+            accumulator <= '0;
+            index       <= 2'd0;
+            busy        <= 1'b0;
+            done        <= 1'b0;
+        end
+
+        else begin
+            // Accept a new request only while idle.
+            if (start && !busy) begin           // remember that start is a one bit input
+                accumulator <= a[0] * b[0];
+                index       <= 2'd1;
+                busy        <= 1'b1;
+                done        <= 1'b0;
+            end
+
+            // Perform one multiply-accumulate operation.
+            else if (busy) begin
+                accumulator <= accumulator + extended_product;
+
+                if (index == 2'd3) begin    // if we reached the end
+                    busy <= 1'b0;
+                    done <= 1'b1;
+                end
+
+                else begin
+                    index <= index + 1'b1;
+                end
+            end
+        end
+    end
+
+
+    assign result = accumulator;
+
+endmodule
