@@ -1,0 +1,13 @@
+# ModelSim generated files
+work/
+vsim.wlf
+transcript
+
+# Quartus generated databases and workspace state
+quartus_*/db/
+quartus_*/incremental_db/
+quartus_*/*.qws
+
+# Quartus output reports contain machine-specific absolute paths. Regenerate them
+# locally from the checked-in project files.
+quartus_*/output_files/

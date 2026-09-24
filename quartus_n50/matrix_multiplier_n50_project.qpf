@@ -1,0 +1,3 @@
+QUARTUS_VERSION = "25.1std"
+DATE = "September 23, 2026"
+PROJECT_REVISION = "matrix_multiplier_n50"

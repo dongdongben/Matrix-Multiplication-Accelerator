@@ -142,12 +142,12 @@ module matrix_multiplier #(
 
         // begin multiplication and addition logic
         for (int m=0; m < M; m++) begin
-            index = base_index + m;
+            index = base_index + INDEX_WIDTH'(m);
 
             if (index < N*N*N) begin
-                i = index / (N**2) % N;
-                j = index / (N) % N;
-                k = index % N;
+                i = DIM_WIDTH'((index / (N**2)) % N);
+                j = DIM_WIDTH'((index / N) % N);
+                k = DIM_WIDTH'(index % N);
 
                 product[m] = a[i][k] * b[k][j];
 
@@ -184,8 +184,12 @@ module matrix_multiplier #(
                 partial_sum <= '0;
             end
             else if (active) begin
-                for (int s = 0; s < sum_count; s++) begin
-                    c[sum_i[s]][sum_j[s]] <= sum[s];    // store into c, with the info from combinational signals
+                // Keep the hardware loop statically bounded so synthesis can
+                // prove every sum-array access is in range.
+                for (int s = 0; s < MAX_NUM_DOTPRODUCT; s++) begin
+                    if (s < sum_count) begin
+                        c[sum_i[s]][sum_j[s]] <= sum[s];    // store into c, with the info from combinational signals
+                    end
                 end
                 if (base_index + M >= N*N*N) begin
                     done <= 1'b1;
@@ -193,7 +197,7 @@ module matrix_multiplier #(
                 end
                 else begin
                     partial_sum <= running_sum;
-                    base_index <= base_index + M;
+                    base_index <= base_index + INDEX_WIDTH'(M);
                 end
             end
         end
